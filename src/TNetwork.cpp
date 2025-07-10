@@ -32,7 +32,7 @@
 #include <boost/asio/ip/address_v6.hpp>
 #include <boost/asio/ip/v6_only.hpp>
 #include <cstring>
-#include <zlib.h>
+#include <zstd.h>
 
 typedef boost::asio::detail::socket_option::integer<SOL_SOCKET, SO_RCVTIMEO> rcv_timeout_option;
 

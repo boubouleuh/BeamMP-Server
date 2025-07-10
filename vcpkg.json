@@ -10,6 +10,7 @@
     "doctest",
     "fmt",
     "libzip",
+    "zstd",
     "nlohmann-json",
     "openssl",
     "rapidjson",

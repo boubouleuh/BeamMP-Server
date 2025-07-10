@@ -81,7 +81,6 @@ set(PRJ_SOURCES
 )
 
 find_package(Lua REQUIRED)
-
 # set the source file containing main()
 set(PRJ_MAIN src/main.cpp)
 # set the source file containing the test's main
@@ -92,6 +91,9 @@ set(PRJ_INCLUDE_DIRS ${LUA_INCLUDE_DIR})
 set(PRJ_COMPILE_FEATURES cxx_std_20)
 # set #defines (test enable/disable not included here)
 set(PRJ_DEFINITIONS CPPHTTPLIB_OPENSSL_SUPPORT)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
 # add all libraries used by the project (WARNING: also set them in vcpkg.json!)
 set(PRJ_LIBRARIES
     fmt::fmt
@@ -105,6 +107,7 @@ set(PRJ_LIBRARIES
     libzip::zip
     OpenSSL::SSL OpenSSL::Crypto
     CURL::libcurl
+	zstd::zstd
     ${LUA_LIBRARIES}
 )
 
@@ -118,6 +121,7 @@ find_package(libzip CONFIG REQUIRED)
 find_package(RapidJSON CONFIG REQUIRED)
 find_package(sol2 CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
+find_package(zstd REQUIRED)
 add_subdirectory("deps/toml11")
 
 include_directories(include)

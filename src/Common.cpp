@@ -34,6 +34,7 @@
 #include "Compat.h"
 #include "CustomAssert.h"
 #include "Http.h"
+#include "zstd.h"
 
 void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
     std::unique_lock Lock(mShutdownHandlersMutex);
@@ -397,61 +398,52 @@ static constexpr size_t MAX_DECOMPRESSION_BUFFER_SIZE = 30 * 1024 * 1024;
 std::vector<uint8_t> DeComp(std::span<const uint8_t> input) {
     beammp_debugf("got {} bytes of input data", input.size());
 
-    // start with a decompression buffer of 5x the input size, clamped to a maximum of 15 MB.
-    // this buffer can and will grow, but we don't want to start it too large. A 5x compression ratio
-    // is pretty optimistic.
+    // On commence avec un buffer de 5x la taille d'entrée, limité à 15 Mo.
     std::vector<uint8_t> output_buffer(std::min<size_t>(input.size() * 5, STARTING_MAX_DECOMPRESSION_BUFFER_SIZE));
 
-    uLongf output_size = output_buffer.size();
-
+    size_t decompressed_size = 0;
     while (true) {
-        int res = uncompress(
-            reinterpret_cast<Bytef*>(output_buffer.data()),
-            &output_size,
-            reinterpret_cast<const Bytef*>(input.data()),
-            static_cast<uLongf>(input.size()));
-        if (res == Z_BUF_ERROR) {
-            // We assume that a reasonable maximum size for decompressed packets exists. We want to avoid
-            // a client effectively "zip bombing" us by sending a lot of small packets which decompress
-            // into huge data.
-            // If this limit were to be an issue, this could be made configurable, however clients have a similar
-            // limit. For that reason, we just reject packets which decompress into too much data.
-            if (output_buffer.size() >= MAX_DECOMPRESSION_BUFFER_SIZE) {
-                throw std::runtime_error(fmt::format("decompressed packet size of {} bytes exceeded", MAX_DECOMPRESSION_BUFFER_SIZE));
-            }
-            // if decompression fails, we double the buffer size (up to the allowed limit) and try again
-            output_buffer.resize(std::max<size_t>(output_buffer.size() * 2, MAX_DECOMPRESSION_BUFFER_SIZE));
-            beammp_warnf("zlib uncompress() failed, trying with a larger buffer size of {}", output_buffer.size());
-            output_size = output_buffer.size();
-        } else if (res != Z_OK) {
-            beammp_error("zlib uncompress() failed: " + std::to_string(res));
-            if (res == Z_DATA_ERROR) {
-                throw InvalidDataError {};
+        decompressed_size = ZSTD_decompress(
+            output_buffer.data(),
+            output_buffer.size(),
+            input.data(),
+            input.size()
+        );
+        if (ZSTD_isError(decompressed_size)) {
+            if (ZSTD_getErrorCode(decompressed_size) == ZSTD_error_dstSize_tooSmall) {
+                if (output_buffer.size() >= MAX_DECOMPRESSION_BUFFER_SIZE) {
+                    throw std::runtime_error(fmt::format("decompressed packet size of {} bytes exceeded", MAX_DECOMPRESSION_BUFFER_SIZE));
+                }
+                output_buffer.resize(std::min<size_t>(output_buffer.size() * 2, MAX_DECOMPRESSION_BUFFER_SIZE));
+                beammp_warnf("zstd decompress() failed, trying with a larger buffer size of {}", output_buffer.size());
+                continue;
             } else {
-                throw std::runtime_error("zlib uncompress() failed");
+                beammp_error("zstd decompress() failed: " + std::string(ZSTD_getErrorName(decompressed_size)));
+                throw std::runtime_error("zstd decompress() failed: " + std::string(ZSTD_getErrorName(decompressed_size)));
             }
-        } else if (res == Z_OK) {
-            break;
         }
+        break;
     }
-    output_buffer.resize(output_size);
+    output_buffer.resize(decompressed_size);
     return output_buffer;
 }
 
+
+
 std::vector<uint8_t> Comp(std::span<const uint8_t> input) {
-    auto max_size = compressBound(input.size());
+    size_t max_size = ZSTD_compressBound(input.size());
     std::vector<uint8_t> output(max_size);
-    uLongf output_size = output.size();
-    int res = compress(
-        reinterpret_cast<Bytef*>(output.data()),
-        &output_size,
-        reinterpret_cast<const Bytef*>(input.data()),
-        static_cast<uLongf>(input.size()));
-    if (res != Z_OK) {
-        beammp_error("zlib compress() failed: " + std::to_string(res));
-        throw std::runtime_error("zlib compress() failed");
+
+    size_t compressed_size = ZSTD_compress(
+        output.data(), output.size(), 
+        input.data(), input.size(),
+        3
+    );
+    if (ZSTD_isError(compressed_size)) {
+        beammp_error("zstd compress() failed: " + std::string(ZSTD_getErrorName(compressed_size)));
+        throw std::runtime_error("zstd compress() failed");
     }
-    beammp_debug("zlib compressed " + std::to_string(input.size()) + " B to " + std::to_string(output_size) + " B");
-    output.resize(output_size);
+    beammp_debug("zstd compressed " + std::to_string(input.size()) + " B to " + std::to_string(compressed_size) + " B");
+    output.resize(compressed_size);
     return output;
 }
