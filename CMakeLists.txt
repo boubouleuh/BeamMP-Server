@@ -107,7 +107,7 @@ set(PRJ_LIBRARIES
     libzip::zip
     OpenSSL::SSL OpenSSL::Crypto
     CURL::libcurl
-    zstd::zstd
+    zstd
     ${LUA_LIBRARIES}
 )
 
