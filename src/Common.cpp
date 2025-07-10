@@ -410,7 +410,7 @@ std::vector<uint8_t> DeComp(std::span<const uint8_t> input) {
             input.size()
         );
         if (ZSTD_isError(decompressed_size)) {
-            if (ZSTD_getErrorCode(decompressed_size) == ZSTD_error_dstSize_tooSmall) {
+            if (ZSTD_getErrorName(decompressed_size) == "ZSTD_error_dstSize_tooSmall") {
                 if (output_buffer.size() >= MAX_DECOMPRESSION_BUFFER_SIZE) {
                     throw std::runtime_error(fmt::format("decompressed packet size of {} bytes exceeded", MAX_DECOMPRESSION_BUFFER_SIZE));
                 }
