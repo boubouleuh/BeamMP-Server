@@ -398,7 +398,7 @@ static constexpr size_t MAX_DECOMPRESSION_BUFFER_SIZE = 30 * 1024 * 1024;
 std::vector<uint8_t> DeComp(std::span<const uint8_t> input) {
     beammp_debugf("got {} bytes of input data", input.size());
 
-    // On commence avec un buffer de 5x la taille d'entrée, limité à 15 Mo.
+    // On commence avec un buffer de 5x la taille d'entrï¿½e, limitï¿½ ï¿½ 15 Mo.
     std::vector<uint8_t> output_buffer(std::min<size_t>(input.size() * 5, STARTING_MAX_DECOMPRESSION_BUFFER_SIZE));
 
     size_t decompressed_size = 0;
