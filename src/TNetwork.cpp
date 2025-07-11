@@ -923,7 +923,7 @@ bool TNetwork::SendLarge(TClient& c, std::vector<uint8_t> Data, bool isSync) {
 
 bool TNetwork::Respond(TClient& c, const std::vector<uint8_t>& MSG, bool Rel, bool isSync) {
     char C = MSG.at(0);
-    if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E' || compressBound(MSG.size()) > 1024) {
+    if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E' || ZSTD_compressBound(MSG.size()) > 1024) {
         if (C == 'O' || C == 'T' || MSG.size() > 1000) {
             return SendLarge(c, MSG, isSync);
         } else {
@@ -1000,11 +1000,15 @@ void TNetwork::SendToAll(TClient* c, const std::vector<uint8_t>& Data, bool Self
             ReadLock Lock(mServer.GetClientMutex());
             Client = ClientPtr.lock();
         } catch (const std::exception&) {
-            // continue
-            beammp_warn("Client expired, shouldn't happen - if a client disconnected recently, you can ignore this");
+            beammp_warn("Client expired, shouldn't happen - if a client disconnected récemment, you can ignore this");
             return true;
         }
         if (Self || Client.get() != c) {
+            // Si le client n'est pas encore synchronisé, on met tout en file d'attente
+            if (!Client->IsSynced() && !Client->IsSyncing()) {
+                Client->EnqueuePacket(Data);
+                return true;
+            }
             if (Client->IsSynced() || Client->IsSyncing()) {
                 if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E' || compressBound(Data.size()) > 1024) {
                     if (C == 'O' || C == 'T' || Data.size() > 1000) {
