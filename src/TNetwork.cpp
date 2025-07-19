@@ -32,7 +32,7 @@
 #include <boost/asio/ip/address_v6.hpp>
 #include <boost/asio/ip/v6_only.hpp>
 #include <cstring>
-#include <zlib.h>
+#include <lz4.h>
 
 typedef boost::asio::detail::socket_option::integer<SOL_SOCKET, SO_RCVTIMEO> rcv_timeout_option;
 
@@ -923,7 +923,7 @@ bool TNetwork::SendLarge(TClient& c, std::vector<uint8_t> Data, bool isSync) {
 
 bool TNetwork::Respond(TClient& c, const std::vector<uint8_t>& MSG, bool Rel, bool isSync) {
     char C = MSG.at(0);
-    if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E' || compressBound(MSG.size()) > 1024) {
+    if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E' || LZ4_compressBound(MSG.size()) > 1024) {
         if (C == 'O' || C == 'T' || MSG.size() > 1000) {
             return SendLarge(c, MSG, isSync);
         } else {
@@ -1006,7 +1006,7 @@ void TNetwork::SendToAll(TClient* c, const std::vector<uint8_t>& Data, bool Self
         }
         if (Self || Client.get() != c) {
             if (Client->IsSynced() || Client->IsSyncing()) {
-                if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E' || compressBound(Data.size()) > 1024) {
+                if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E' || LZ4_compressBound(Data.size()) > 1024) {
                     if (C == 'O' || C == 'T' || Data.size() > 1000) {
                         if (Data.size() > 400) {
                             auto CompressedData = Data;

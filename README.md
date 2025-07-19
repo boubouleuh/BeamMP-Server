@@ -53,7 +53,7 @@ You can find precompiled binaries under [Releases](https://github.com/BeamMP/Bea
 On Linux, you need some dependencies to **build** the server (on Windows, you don't):
 
 ```
-liblua5.3-dev curl zip unzip tar cmake make git g++
+liblz4-dev liblua5.3-dev curl zip unzip tar cmake make git g++
 ```
 
 You can install these with your distribution's package manager. You will need sudo or need root for ONLY this step.
@@ -75,7 +75,7 @@ When you make changes to the code, you only have to run step 4 again.
 ### Building for FreeBSD
 Building is only supported for major release branches of FreeBSD that are currently not EOL. The build process is the same as on Linux, although build dependencies can be universally installed from ports via pkg:
 ```
-pkg install git cmake-core zip bash devel/ninja devel/pkgconf lua53
+pkg install liblz4 git cmake-core zip bash devel/ninja devel/pkgconf lua53
 ```
 After installing the necessary build dependencies, follow the Linux build instructions beginning from step 3. Beware that running the initial cmake command will compile vcpkg from source, as vcpkg has no native FreeBSD port - this may take some time.
 

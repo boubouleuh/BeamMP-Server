@@ -105,6 +105,7 @@ set(PRJ_LIBRARIES
     libzip::zip
     OpenSSL::SSL OpenSSL::Crypto
     CURL::libcurl
+    lz4
     ${LUA_LIBRARIES}
 )
 
