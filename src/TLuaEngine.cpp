@@ -553,6 +553,37 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string&
     return Result;
 }
 
+sol::table TLuaEngine::StateThreadData::Lua_TriggerAsyncLocalEvent(const std::string& EventName, sol::variadic_args EventArgs) {
+    sol::table Result = mStateView.create_table();
+    int i = 1;
+    for (const auto& Handler : mEngine->GetEventHandlersForState(EventName, mStateId)) {
+        auto Fn = sol::function();
+        if (Handler.is<std::string>()) {
+            Fn = mStateView[Handler];
+        }else {
+            Fn = Handler;
+        }
+        if (Fn.valid() && Fn.get_type() == sol::type::function) {
+            // auto fut = std::async(std::launch::async, [Fn, EventArgs] {
+            //     return Fn(EventArgs);
+            // });
+            // std::thread t(Fn, EventArgs);
+            // t.detach();
+
+            auto ret = std::async(Fn, EventArgs);
+            auto FnRet = ret.get();
+            if (FnRet.valid()) {
+                Result.set(i, FnRet);
+                ++i;
+            } else {
+                sol::error Err = FnRet;
+                beammp_lua_error(std::string("TriggerAsyncLocalEvent: ") + Err.what());
+            }
+        }
+    }
+    return Result;
+}
+
 sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
     auto MaybeClient = GetClient(mEngine->Server(), ID);
     if (MaybeClient && !MaybeClient.value().expired()) {
@@ -836,6 +867,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     MPTable.set_function("TriggerLocalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> sol::table {
         return Lua_TriggerLocalEvent(EventName, EventArgs);
     });
+    MPTable.set_function("TriggerAsyncLocalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> sol::table {
+        return Lua_TriggerAsyncLocalEvent(EventName, EventArgs);
+    });
     MPTable.set_function("TriggerClientEvent", &LuaAPI::MP::TriggerClientEvent);
     MPTable.set_function("TriggerClientEventJson", &LuaAPI::MP::TriggerClientEventJson);
     MPTable.set_function("GetPlayerCount", &LuaAPI::MP::GetPlayerCount);
@@ -931,7 +965,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     UtilTable.set_function("LogInfo", [this](sol::variadic_args args) {
         std::string ToPrint = "";
         for (const auto& arg : args) {
-            ToPrint += LuaAPI::LuaToString(static_cast<const sol::object>(arg));
+            ToPrint += LuaAPI::LuaToString(arg);
             ToPrint += "\t";
         }
         beammp_lua_log("INFO", mStateId, ToPrint);

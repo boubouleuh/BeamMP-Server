@@ -182,7 +182,7 @@ public:
     [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName, TLuaStateId IgnoreId, ArgsT&&... Args) {
         std::unique_lock Lock(mLuaEventsMutex);
         beammp_event(EventName);
-        if (mLuaEvents.find(EventName) == mLuaEvents.end()) { // if no event handler is defined for 'EventName', return immediately
+        if (!mLuaEvents.contains(EventName)) { // if no event handler is defined for 'EventName', return immediately
             return {};
         }
 
@@ -260,6 +260,7 @@ private:
     private:
         sol::table Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs);
         sol::table Lua_TriggerLocalEvent(const std::string& EventName, sol::variadic_args EventArgs);
+        sol::table Lua_TriggerAsyncLocalEvent(const std::string& EventName, sol::variadic_args EventArgs);
         sol::table Lua_GetPlayerIdentifiers(int ID);
         std::variant<std::string, sol::nil_t> Lua_GetPlayerRole(int ID);
         sol::table Lua_GetPlayers();
